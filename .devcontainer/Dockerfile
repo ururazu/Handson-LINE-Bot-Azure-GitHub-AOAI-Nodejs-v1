@@ -2,7 +2,8 @@
 # Find the Dockerfile at the following URL:
 # Node 14: https://github.com/Azure/azure-functions-docker/blob/dev/host/4/bullseye/amd64/node/node14/node14-core-tools.Dockerfile
 # Node 16: https://github.com/Azure/azure-functions-docker/blob/dev/host/4/bullseye/amd64/node/node16/node16-core-tools.Dockerfile
-ARG VARIANT=16
+# Node 18: https://github.com/Azure/azure-functions-docker/blob/dev/host/4/bullseye/amd64/node/node18/node18-core-tools.Dockerfile
+ARG VARIANT=17
 FROM mcr.microsoft.com/azure-functions/node:4-node${VARIANT}-core-tools
 
 RUN curl -Lo /usr/local/bin/bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64 \

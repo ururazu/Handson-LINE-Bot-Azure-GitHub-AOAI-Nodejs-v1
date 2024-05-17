@@ -2,11 +2,7 @@
 	// copy: https://github.com/microsoft/vscode-dev-containers/blob/main/containers/azure-functions-node/.devcontainer/devcontainer.json
 	"name": "Azure Functions & Node.js",
 	"build": {
-		"dockerfile": "Dockerfile",
-		// Update 'VARIANT' to pick a Node.js version: 14, 16
-		"args": { 
-			"VARIANT": "16"
-		}
+		"dockerfile": "Dockerfile"
 	},
 	"forwardPorts": [ 7071 ],
 
