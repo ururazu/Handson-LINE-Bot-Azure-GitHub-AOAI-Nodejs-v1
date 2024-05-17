@@ -28,12 +28,16 @@ const cosmosDBContainer = database.container(containerId);
 
 // create LINE SDK config from env variables
 const config = {
-  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
   channelSecret: process.env.CHANNEL_SECRET,
 };
 
 // create LINE SDK client
-const client = new line.Client(config);
+const client = new line.messagingApi.MessagingApiClient({
+  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN
+});
+const blobClient = new line.messagingApi.MessagingApiBlobClient({
+  channelAccessToken: process.env.CHANNEL_ACCESS_TOKEN,
+});
 
 // create Express app
 // about Express itself: https://expressjs.com/
@@ -66,110 +70,132 @@ async function handleEvent(event) {
       if (event.postback.data === 'sticker') {
         //https://developers.line.biz/ja/reference/messaging-api/#sticker-message
         //https://developers.line.biz/ja/docs/messaging-api/sticker-list/#sticker-definitions
-        return client.replyMessage(event.replyToken,{
-          type: 'sticker',
-          packageId: "11537",
-          stickerId: "52002735"
+        return client.replyMessage({
+          replyToken: event.replyToken,
+          messages: [{
+            type: 'sticker',
+            packageId: "11537",
+            stickerId: "52002735"
+          }]
         });
       }
     
     } else if (event.message.type === 'text') {
       if (event.message.text === 'flex') {
         //https://developers.line.biz/ja/reference/messaging-api/#flex-message
-        return client.replyMessage(event.replyToken,{
-          type: 'flex',
-          altText: 'item list',
-          contents: flexMsg
-        });      
+        return client.replyMessage({
+          replyToken: event.replyToken,
+          messages: [{
+            type: 'flex',
+            altText: 'item list',
+            contents: flexMsg
+          }]
+        });
       } else if (event.message.text === 'quick') {
         //https://developers.line.biz/ja/reference/messaging-api/#quick-reply
-        return client.replyMessage(event.replyToken,{
-          type: 'text',
-          text: 'ステッカー欲しいですか❓YesかNoで答えてください, もしくは素敵な写真送って❗️',
-          "quickReply": {
-            "items": [
-              {
-                "type": "action",
-                "action": {
-                  "type":"postback",
-                  "label":"Yes",
-                  "data": "sticker",
-                  "displayText":"ステッカーください❗️"
+        return client.replyMessage({
+          replyToken: event.replyToken,
+          messages: [{
+            type: 'text',
+            text: 'ステッカー欲しいですか❓YesかNoで答えてください, もしくは素敵な写真送って❗️',
+            "quickReply": {
+              "items": [
+                {
+                  "type": "action",
+                  "action": {
+                    "type":"postback",
+                    "label":"Yes",
+                    "data": "sticker",
+                    "displayText":"ステッカーください❗️"
+                  }
+                },
+                {
+                  "type": "action",
+                  "action": {
+                    "type":"message",
+                    "label":"No",
+                    "text":"不要。"
+                  }
+                },
+                {
+                  "type": "action",
+                  "action": {
+                    "type": "camera",
+                    "label": "camera"
+                  }
                 }
-              },
-              {
-                "type": "action",
-                "action": {
-                  "type":"message",
-                  "label":"No",
-                  "text":"不要。"
-                }
-              },
-              {
-                "type": "action",
-                "action": {
-                  "type": "camera",
-                  "label": "camera"
-                }
-              }
-            ]
-          }
-        });
-      } else if (event.message.text === 'マスク検査') {
-        const newItem = {
-          id: userId,
-          maskflag: "on",
-        };
-        const { resource: createdItem } = await cosmosDBContainer.items.upsert(newItem);
-        return client.replyMessage(event.replyToken,{
-          type: 'text',
-          text: 'マスク着用の検査を行います。カメラを起動し顔を撮影して送ってください。📷',
-          "quickReply": {
-            "items": [
-              {
-                "type": "action",
-                "action": {
-                  "type": "camera",
-                  "label": "camera"
-                }
-              }
-            ]
-          }
+              ]
+            }
+          }]
         });
       }
+      // } else if (event.message.text === 'マスク検査') {
+      //   const newItem = {
+      //     id: userId,
+      //     maskflag: "on",
+      //   };
+      //   const { resource: createdItem } = await cosmosDBContainer.items.upsert(newItem);
+      //   return client.replyMessage({
+      //     replyToken: event.replyToken,
+      //     messages: [{
+      //       type: 'text',
+      //       text: 'マスク着用の検査を行います。カメラを起動し顔を撮影して送ってください。📷',
+      //       "quickReply": {
+      //         "items": [
+      //           {
+      //             "type": "action",
+      //             "action": {
+      //               "type": "camera",
+      //               "label": "camera"
+      //             }
+      //           }
+      //         ]
+      //       }
+      //     }]
+      //   });
+      // }
     } else if (event.message.type === 'image') {
       //https://developers.line.biz/ja/reference/messaging-api/#image-message
       const blobName = `${crypto.randomBytes(20).toString('hex')}.jpg`;
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-      const stream = await client.getMessageContent(event.message.id);
+      const stream = await blobClient.getMessageContent(event.message.id);
       const data = await getStreamData(stream);
       const res = blockBlobClient.uploadData(data);
-      return client.replyMessage(event.replyToken,{
-        type: 'image',
-        originalContentUrl: `https://${blobServiceClient.accountName}.blob.core.windows.net/files/${blobName}`,
-        previewImageUrl: `https://${blobServiceClient.accountName}.blob.core.windows.net/files/${blobName}`
+      return client.replyMessage({
+        replyToken: event.replyToken,
+        messages: [{
+          type: 'image',
+          originalContentUrl: `https://${blobServiceClient.accountName}.blob.core.windows.net/files/${blobName}`,
+          previewImageUrl: `https://${blobServiceClient.accountName}.blob.core.windows.net/files/${blobName}`
+        }]
       });
     } else if (event.message.type === 'audio') {
       //https://developers.line.biz/ja/reference/messaging-api/#audio-message
       //durationはこれでとれそう？ > https://www.npmjs.com/package/mp3-duration
       const blobName = `${crypto.randomBytes(20).toString('hex')}.mp3`;
       const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-      const stream = await client.getMessageContent(event.message.id);
+      const stream = await blobClient.getMessageContent(event.message.id);
       const data = await getStreamData(stream);
       const res = blockBlobClient.uploadData(data);
-      return client.replyMessage(event.replyToken,{
-        type: 'audio',
-        originalContentUrl: `https://${blobServiceClient.accountName}.blob.core.windows.net/files/${blobName}`,
-        duration: 60000
+      return client.replyMessage({
+        replyToken: event.replyToken,
+        messages: [{
+          type: 'audio',
+          originalContentUrl: `https://${blobServiceClient.accountName}.blob.core.windows.net/files/${blobName}`,
+          duration: 60000
+        }]
       });
     } else if (event.message.type === 'location') {
       //https://developers.line.biz/ja/reference/messaging-api/#location-message
-      return client.replyMessage(event.replyToken,{
-        type: 'location',
-        title: 'my location',
-        address: event.message.address,
-        latitude: event.message.latitude,
-        longitude: event.message.longitude
+      return client.replyMessage({
+        replyToken: event.replyToken,
+        messages: [{
+          type: 'location',
+          title: 'my location',
+          address: event.message.address,
+          latitude: event.message.latitude,
+          longitude: event.message.longitude
+        }]
       });
     }
   
@@ -215,7 +241,10 @@ async function handleEvent(event) {
     const echo = { type: 'text', text: event.message.text };
 
     // use reply API
-    return client.replyMessage(event.replyToken, echo);
+    return client.replyMessage({
+      replyToken: event.replyToken,
+      messages: [echo],
+    });
 }
 
 const getStreamData = async (stream)  => {
